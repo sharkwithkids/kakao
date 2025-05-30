@@ -17,7 +17,7 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
-url = "https://page.kakao.com/content/50242834"
+url = "https://page.kakao.com/content/55021766" #테스트용 url
 driver.get(url)
 time.sleep(3)
 

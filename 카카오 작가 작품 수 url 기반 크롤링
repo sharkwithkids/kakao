@@ -1,0 +1,65 @@
+카카오 작가 작품 수 url 기반 크롤링
+
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+import re
+
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service, options=chrome_options)
+
+url = "https://page.kakao.com/content/50242834"
+driver.get(url)
+time.sleep(3)
+
+# 1️⃣ 현재 페이지 웹툰 제목 추출
+title_elem = driver.find_element(By.CSS_SELECTOR, "span.font-large3-bold")
+current_title = title_elem.text.strip()
+# 정제
+current_title_clean = re.sub(r'(\[.*?\]|\(.*?\))', '', current_title).strip()
+
+# 2️⃣ '이 작가의 다른 작품' 영역
+header_div = driver.find_element(By.XPATH, "//div[text()='이 작가의 다른 작품']")
+ancestor_div = header_div.find_element(By.XPATH, "./ancestor::div[contains(@class, 'w-full overflow-hidden')]")
+parent_of_list = ancestor_div.find_element(By.XPATH, "./following-sibling::div//ul")
+li_list = parent_of_list.find_elements(By.TAG_NAME, "li")
+
+normalized_title_set = set()
+
+for li in li_list:
+    try:
+        info_div = li.find_element(By.CSS_SELECTOR, "div[aria-hidden='true'].w-full.space-y-4pxr.pb-4pxr.pr-8pxr.pt-8pxr.h-76pxr")
+        
+        # 매체명
+        media_elem = info_div.find_element(By.CSS_SELECTOR, "span.break-all.align-middle")
+        media = media_elem.text.strip()
+        if media == "웹소설":
+            continue
+
+        # 제목 정제
+        title_elem = info_div.find_element(By.CSS_SELECTOR, "div.font-small1.line-clamp-2.break-all.text-el-60")
+        raw_title = title_elem.text.strip()
+        clean_title = re.sub(r'(\[.*?\]|\(.*?\))', '', raw_title).strip()
+
+        normalized_title_set.add(clean_title)
+    except Exception as e:
+        print("Error:", e)
+
+driver.quit()
+
+# 3️⃣ 현재 웹툰 제목 추가
+normalized_title_set.add(current_title_clean)
+
+# 4️⃣ 최종 결과
+print(f"작가의 웹툰 총 개수 (웹소설 제외 & 중복 제거 & 현재 웹툰 포함): {len(normalized_title_set)}")
+for title in normalized_title_set:
+    print("-", title)
